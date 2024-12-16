@@ -1,0 +1,102 @@
+import struct
+import time
+import os
+
+# Binary Encoder for integer, float, and string
+class BinaryEncoder:
+    def __init__(self):
+        self.buffer = bytearray()  # Use bytearray for memory-efficient binary storage
+    
+    def encode_integer(self, value: int) -> bytes:
+        """Encodes an integer into binary format."""
+        binary_data = struct.pack('!I', value)  # '!I' -> Big-endian unsigned integer
+        self.buffer.extend(binary_data)  # Add to the buffer
+        return binary_data
+    
+    def encode_float(self, value: float) -> bytes:
+        """Encodes a float into binary format."""
+        binary_data = struct.pack('!f', value)  # '!f' -> Big-endian float
+        self.buffer.extend(binary_data)
+        return binary_data
+    
+    def encode_string(self, value: str) -> bytes:
+        """Encodes a string into binary format."""
+        encoded_str = value.encode('utf-8')  # Convert string to bytes (UTF-8 encoding)
+        length = len(encoded_str)  # Store the length of the string
+        binary_data = struct.pack('!I', length) + encoded_str  # Prepend length of the string
+        self.buffer.extend(binary_data)
+        return binary_data
+
+    def get_buffer(self):
+        """Returns the final binary buffer."""
+        return bytes(self.buffer)
+
+# Binary Decoder for integer, float, and string
+class BinaryDecoder:
+    def __init__(self, binary_data: bytes):
+        self.buffer = binary_data
+        self.offset = 0  # Pointer to track current position in the binary data
+
+    def decode_integer(self) -> int:
+        """Decodes an integer from binary format."""
+        value = struct.unpack_from('!I', self.buffer, self.offset)[0]
+        self.offset += 4  # Move the offset forward by 4 bytes (size of an unsigned int)
+        return value
+    
+    def decode_float(self) -> float:
+        """Decodes a float from binary format."""
+        value = struct.unpack_from('!f', self.buffer, self.offset)[0]
+        self.offset += 4  # Move the offset forward by 4 bytes (size of a float)
+        return value
+    
+    def decode_string(self) -> str:
+        """Decodes a string from binary format."""
+        length = struct.unpack_from('!I', self.buffer, self.offset)[0]  # Get the string length
+        self.offset += 4  # Move the offset forward by 4 bytes for the length
+        value = self.buffer[self.offset:self.offset + length].decode('utf-8')  # Decode the string
+        self.offset += length  # Move the offset forward by the length of the string
+        return value
+
+# Performance and testing
+def test_encoding_decoding():
+    # Example data to encode and decode
+    integer_data = 123456789
+    float_data = 3.14159265359
+    string_data = "Hello, world!"
+
+    # Create encoder and encode data
+    encoder = BinaryEncoder()
+    encoder.encode_integer(integer_data)
+    encoder.encode_float(float_data)
+    encoder.encode_string(string_data)
+
+    # Now get the encoded binary buffer
+    binary_data = encoder.get_buffer()
+
+    # Create decoder and pass the encoded binary data
+    decoder = BinaryDecoder(binary_data)
+
+    # Measure encoding time
+    start_time = time.time()
+    encoding_time = time.time() - start_time
+
+    print(f"Encoding Time: {encoding_time:.6f} seconds")
+
+    # Measure decoding time
+    start_time = time.time()
+    decoded_integer = decoder.decode_integer()
+    decoded_float = decoder.decode_float()
+    decoded_string = decoder.decode_string()
+    decoding_time = time.time() - start_time
+
+    print(f"Decoding Time: {decoding_time:.6f} seconds")
+
+    # Verify that the decoded values match the original data
+    assert integer_data == decoded_integer, f"Decoded integer {decoded_integer} doesn't match original!"
+    assert abs(float_data - decoded_float) < 1e-6, f"Decoded float {decoded_float} doesn't match original!"
+    assert string_data == decoded_string, f"Decoded string '{decoded_string}' doesn't match original!"
+
+    print("All tests passed successfully.")
+
+if __name__ == "__main__":
+    test_encoding_decoding()
